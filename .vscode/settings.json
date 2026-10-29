@@ -1,0 +1,6 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/Bellevie-Healthcare-network-CRM/venv/bin/python3",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/Bellevie-Healthcare-network-CRM"
+  ]
+}

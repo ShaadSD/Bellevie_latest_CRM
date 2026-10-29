@@ -1,0 +1,2 @@
+python-interpreter-path = "Bellevie-Healthcare-network-CRM/venv/bin/python3"
+search-paths = ["Bellevie-Healthcare-network-CRM"]

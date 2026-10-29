@@ -1,0 +1,7 @@
+{
+  "venvPath": "Bellevie-Healthcare-network-CRM",
+  "venv": "venv",
+  "extraPaths": [
+    "Bellevie-Healthcare-network-CRM"
+  ]
+}
