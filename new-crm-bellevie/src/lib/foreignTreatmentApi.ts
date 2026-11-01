@@ -113,6 +113,7 @@ export interface ForeignTreatmentCase {
   public_id: string;
   member: number;
   member_name: string;
+  member_public_id?: string | null;
   centre: number | null;
   centre_name: string | null;
   requested_by: number;

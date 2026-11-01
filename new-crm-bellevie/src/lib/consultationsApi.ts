@@ -33,6 +33,21 @@ export interface TelemedicineCall {
   notes?: string;
   created_at?: string;
   chat_messages?: TelemedicineChatMessage[];
+  room_url?: string;
+}
+
+export interface TelemedicineRoomAccess {
+  room_id: string;
+  room_url: string;
+  token: string;
+}
+
+export async function joinTelemedicineRoom(callId: number): Promise<TelemedicineRoomAccess> {
+  return apiFetch(`/api/consultations/telemedicine/${callId}/join_room/`, { method: 'POST' });
+}
+
+export async function endTelemedicineCall(callId: number): Promise<TelemedicineCall> {
+  return apiFetch(`/api/consultations/telemedicine/${callId}/end_call/`, { method: 'POST' });
 }
 
 export type ForeignConsultationStatus =

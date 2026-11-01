@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Video as VideoIcon,
   X,
@@ -14,33 +14,131 @@ import {
   Globe,
   ShieldCheck
 } from 'lucide-react';
-import { TelemedicineCall, sendChatMessage } from '@/lib/consultationsApi';
+import { TelemedicineCall, sendChatMessage, joinTelemedicineRoom, endTelemedicineCall, TelemedicineRoomAccess } from '@/lib/consultationsApi';
 
 interface TelemedicineVideoCallModalProps {
   call: TelemedicineCall;
   onClose: () => void;
+  joinRoom?: (callId: number) => Promise<TelemedicineRoomAccess>;
+  endCall?: (callId: number) => Promise<unknown>;
 }
 
 export const TelemedicineVideoCallModal: React.FC<TelemedicineVideoCallModalProps> = ({
   call,
-  onClose
+  onClose,
+  joinRoom = joinTelemedicineRoom,
+  endCall = endTelemedicineCall,
 }) => {
   const [activeTab, setActiveTab] = useState<'chat' | 'participants' | 'notes'>('chat');
   const [copied, setCopied] = useState(false);
+  const [roomAccess, setRoomAccess] = useState<TelemedicineRoomAccess | null>(null);
+  const [roomError, setRoomError] = useState<string | null>(null);
+  const meetingContainerRef = useRef<HTMLDivElement>(null);
+  const meetingApiRef = useRef<{ dispose?: () => void } | null>(null);
+
+  useEffect(() => {
+    joinRoom(call.id).then(setRoomAccess).catch((error: unknown) => {
+      setRoomError(error instanceof Error && error.message ? error.message : 'Secure video service is unavailable. Please contact the administrator.');
+    });
+  }, [call.id, joinRoom]);
+
+  useEffect(() => {
+    if (!roomAccess || !meetingContainerRef.current) return;
+
+    const roomUrl = new URL(roomAccess.room_url);
+    const pathParts = roomUrl.pathname.split('/').filter(Boolean);
+    const appId = pathParts.shift();
+    const roomName = pathParts.join('/');
+    if (!appId || !roomName) {
+      setRoomError('The JaaS room URL is invalid. Please contact the administrator.');
+      return;
+    }
+
+    let cancelled = false;
+    const container = meetingContainerRef.current;
+    const scriptId = `jaas-external-api-${appId}`;
+
+    const loadApi = async () => {
+      let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+      if (!script) {
+        script = document.createElement('script');
+        script.id = scriptId;
+        script.src = `${roomUrl.origin}/${appId}/external_api.js`;
+        script.async = true;
+        document.head.appendChild(script);
+        await new Promise<void>((resolve, reject) => {
+          script?.addEventListener('load', () => resolve(), { once: true });
+          script?.addEventListener('error', () => reject(new Error('Unable to load the JaaS embedded meeting API.')), { once: true });
+        });
+      } else if (!(window as any).JitsiMeetExternalAPI) {
+        await new Promise<void>((resolve, reject) => {
+          script?.addEventListener('load', () => resolve(), { once: true });
+          script?.addEventListener('error', () => reject(new Error('Unable to load the JaaS embedded meeting API.')), { once: true });
+        });
+      }
+
+      if (cancelled || !container || !(window as any).JitsiMeetExternalAPI) return;
+      container.replaceChildren();
+      meetingApiRef.current = new (window as any).JitsiMeetExternalAPI(roomUrl.host, {
+        roomName: `${appId}/${roomName}`,
+        jwt: roomAccess.token,
+        parentNode: container,
+        width: '100%',
+        height: '100%',
+        userInfo: { displayName: 'HQ/NC Coordinator' },
+        configOverwrite: {
+          prejoinConfig: { enabled: false },
+        },
+      });
+    };
+
+    loadApi().catch((error: unknown) => {
+      if (!cancelled) setRoomError(error instanceof Error ? error.message : 'Secure video service is unavailable. Please contact the administrator.');
+    });
+
+    return () => {
+      cancelled = true;
+      meetingApiRef.current?.dispose?.();
+      meetingApiRef.current = null;
+      container.replaceChildren();
+    };
+  }, [roomAccess]);
 
   // Compute direct room URL for WebRTC / Jitsi room
   const rawRoomId = call.room_id || (call as any).video_room_id || `bellevie-room-${call.id}`;
   const roomSlug = rawRoomId.toLowerCase().replace(/[^a-z0-9-_]/g, '');
-  const directRoomUrl = (call as any).video_room_url || `https://meet.jit.si/${roomSlug}`;
+  const directRoomUrl = roomAccess ? `${roomAccess.room_url}?jwt=${encodeURIComponent(roomAccess.token)}` : '';
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(directRoomUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyLink = async () => {
+    if (!directRoomUrl) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(directRoomUrl);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = directRoomUrl;
+        textArea.setAttribute('readonly', '');
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        const copied = document.execCommand('copy');
+        textArea.remove();
+        if (!copied) throw new Error('Clipboard copy was blocked by the browser.');
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setRoomError('Copy was blocked by the browser. Please select the room link and copy it manually.');
+    }
   };
 
   const handleOpenDirectRoom = () => {
-    window.open(directRoomUrl, '_blank', 'noopener,noreferrer');
+    if (directRoomUrl) window.open(directRoomUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleLeaveCall = async () => {
+    try { await endCall(call.id); } finally { onClose(); }
   };
 
   // Chat message state
@@ -138,12 +236,11 @@ export const TelemedicineVideoCallModal: React.FC<TelemedicineVideoCallModalProp
             
             {/* Embedded Live Interactive WebRTC Room */}
             <div className="flex-1 w-full h-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl relative">
-              <iframe
-                src={`${directRoomUrl}#config.prejoinPageEnabled=false&userInfo.displayName="${encodeURIComponent('HQ/NC Coordinator')}"`}
-                allow="camera; microphone; display-capture; autoplay; clipboard-write"
-                className="w-full h-full border-0 rounded-2xl"
-                title="Direct Live Video Consultation Room"
-              />
+              {roomError ? <div className="h-full flex items-center justify-center p-8 text-center text-red-300 text-sm">{roomError}</div> : !roomAccess ? <div className="h-full flex items-center justify-center text-slate-400 text-sm">Preparing secure consultation room…</div> : <div
+                ref={meetingContainerRef}
+                className="w-full h-full rounded-2xl overflow-hidden"
+                aria-label="Embedded JaaS video consultation room"
+              />}
             </div>
 
             {/* Bottom Call Quick Action Bar */}
@@ -183,7 +280,7 @@ export const TelemedicineVideoCallModal: React.FC<TelemedicineVideoCallModalProp
                 </button>
 
                 <button
-                  onClick={onClose}
+                  onClick={handleLeaveCall}
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
                 >
                   <PhoneOff className="w-3.5 h-3.5" />

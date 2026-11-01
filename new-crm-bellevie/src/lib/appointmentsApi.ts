@@ -523,3 +523,15 @@ export async function createHqVideoRoomApi(id: number | string, room_notes?: str
     body: JSON.stringify({ room_notes }),
   });
 }
+
+export interface VideoRoomAccess {
+  room_id: string;
+  room_url: string;
+  token: string;
+}
+
+export async function joinHqVideoRoomApi(id: number | string) {
+  return apiFetch<VideoRoomAccess>(`/api/appointments/appointments/${id}/join-video-room/`, {
+    method: 'POST',
+  });
+}

@@ -731,7 +731,7 @@ export const NcForeignTreatmentView: React.FC<NcForeignTreatmentViewProps> = ({
                 <div className="text-sm font-bold text-slate-700 mt-1 flex items-center gap-2">
                   <span>{selectedCase.member_name}</span>
                   <span className="text-slate-400 font-normal">|</span>
-                  <span className="text-xs text-slate-500 font-mono">Member ID: #{selectedCase.member}</span>
+                  <span className="text-xs text-slate-500 font-mono">Member ID: {selectedCase.member_public_id || 'N/A'}</span>
                 </div>
               </div>
             </div>
@@ -810,7 +810,7 @@ export const NcForeignTreatmentView: React.FC<NcForeignTreatmentViewProps> = ({
 
                     <div>
                       <span className="text-slate-400 block font-medium">Member ID</span>
-                      <span className="font-bold text-slate-800 font-mono">#{selectedCase.member}</span>
+                      <span className="font-bold text-slate-800 font-mono">{selectedCase.member_public_id || 'N/A'}</span>
                     </div>
 
                     {selectedCase.patient_age && (

@@ -225,7 +225,7 @@ export const CreateHomecareModal: React.FC<CreateHomecareModalProps> = ({
                 <div
                   key={srv.id}
                   onClick={() => handleSelectService(srv)}
-                  className="p-5 border border-slate-200 hover:border-blue-500 rounded-2xl bg-white hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between space-y-3 group relative"
+                  className="h-full min-w-0 p-5 border border-slate-200 hover:border-blue-500 rounded-2xl bg-white hover:shadow-lg transition-all cursor-pointer flex flex-col group relative"
                 >
                   <div className="flex items-start justify-between">
                     <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -236,19 +236,19 @@ export const CreateHomecareModal: React.FC<CreateHomecareModalProps> = ({
                     </span>
                   </div>
 
-                  <div>
+                  <div className="mt-3 flex-1 min-w-0">
                     <h4 className="font-bold text-slate-900 text-base">{srv.name}</h4>
                     <p className="text-xs text-slate-500 mt-0.5">{srv.category_name || srv.category}</p>
                     {srv.description && (
-                      <p className="text-xs text-slate-600 line-clamp-2 mt-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      <p className="text-xs text-slate-600 line-clamp-3 overflow-hidden mt-2 min-h-[3.75rem] bg-slate-50 p-2 rounded-lg border border-slate-100 leading-5">
                         {srv.description}
                       </p>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-auto">
-                    <span className="text-sm font-extrabold text-blue-700">à§³{srv.base_price}</span>
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 mt-4">
+                    <span className="text-sm font-extrabold text-blue-700">৳{srv.base_price}</span>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -407,7 +407,7 @@ export const CreateHomecareModal: React.FC<CreateHomecareModalProps> = ({
                 <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-100">
                   <div className="text-[11px] font-semibold text-blue-600 uppercase">Base Price</div>
                   <div className="text-base font-black text-blue-700 mt-0.5">
-                    à§³{viewingDetailService.base_price}
+                    ৳{viewingDetailService.base_price}
                   </div>
                 </div>
               </div>

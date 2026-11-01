@@ -11,6 +11,7 @@ import {
   fetchDoctorDesignationsApi,
   fetchDoctorsByDesignationApi,
   fetchAppointmentHistoryApi,
+  joinHqVideoRoomApi,
   ApiAppointment,
   ApiDoctor,
   ApiDoctorDesignation,
@@ -868,10 +869,14 @@ export const NcAppointmentView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => {
-                                const roomId = selectedAppointment.video_room_id || `bellevie-room-${selectedAppointment.id}`;
-                                const slug = roomId.toLowerCase().replace(/[^a-z0-9-_]/g, '');
-                                const url = selectedAppointment.video_room_url || `https://meet.jit.si/${slug}`;
-                                window.open(url, '_blank', 'noopener,noreferrer');
+                                 void (async () => {
+                                   try {
+                                     const access = await joinHqVideoRoomApi(selectedAppointment.id);
+                                     window.open(`${access.room_url}?jwt=${encodeURIComponent(access.token)}`, '_blank', 'noopener,noreferrer');
+                                   } catch (error) {
+                                     alert('Secure JaaS video is not configured or access was denied.');
+                                   }
+                                 })();
                               }}
                               className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg text-[11px] flex items-center justify-center gap-1 cursor-pointer"
                             >
@@ -881,11 +886,15 @@ export const NcAppointmentView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => {
-                                const roomId = selectedAppointment.video_room_id || `bellevie-room-${selectedAppointment.id}`;
-                                const slug = roomId.toLowerCase().replace(/[^a-z0-9-_]/g, '');
-                                const url = selectedAppointment.video_room_url || `https://meet.jit.si/${slug}`;
-                                navigator.clipboard.writeText(url);
-                                alert('Direct Room Link copied to clipboard!');
+                                 void (async () => {
+                                   try {
+                                     const access = await joinHqVideoRoomApi(selectedAppointment.id);
+                                     await navigator.clipboard.writeText(`${access.room_url}?jwt=${encodeURIComponent(access.token)}`);
+                                     alert('Secure room link copied. It expires in 1 hour.');
+                                   } catch (error) {
+                                     alert('Secure JaaS video is not configured or access was denied.');
+                                   }
+                                 })();
                               }}
                               className="px-3 py-1.5 bg-white border border-indigo-200 text-indigo-800 font-bold rounded-lg text-[11px] hover:bg-indigo-50 cursor-pointer flex items-center gap-1"
                             >
@@ -1728,6 +1737,8 @@ export const NcAppointmentView: React.FC = () => {
               { id: 1, call: activeVideoCallApt.id, sender_name: 'HQ Admin', sender_role: 'ADMIN', message: 'Welcome to Bellevie HQ Video Room. The consultation room is now live.', timestamp: '10:00 AM' }
             ]
           }}
+          joinRoom={joinHqVideoRoomApi}
+          endCall={async () => Promise.resolve()}
           onClose={() => setActiveVideoCallApt(null)}
         />
       )}

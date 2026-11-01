@@ -28,8 +28,8 @@ export const TelemedicineHqView: React.FC = () => {
   const [activeCallModal, setActiveCallModal] = useState<TelemedicineCall | null>(null);
 
   // Form State
-  const [memberInput, setMemberInput] = useState('');
-  const [centreInput, setCentreInput] = useState('');
+  const [memberInput, setMemberInput] = useState('Abdul Karim (BV-000124)');
+  const [centreInput, setCentreInput] = useState('Dhaka Centre');
   const [notesInput, setNotesInput] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 

@@ -322,7 +322,7 @@ export const NcHomecareView: React.FC<NcHomecareViewProps> = ({
             {safeServices.map((srv) => (
               <div
                 key={srv.id}
-                className="p-6 border border-slate-200 hover:border-blue-500 rounded-2xl bg-white hover:shadow-xl transition-all flex flex-col justify-between space-y-4 group"
+                className="h-full min-w-0 p-6 border border-slate-200 hover:border-blue-500 rounded-2xl bg-white hover:shadow-xl transition-all flex flex-col group"
               >
                 <div className="flex items-start justify-between">
                   <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -333,19 +333,19 @@ export const NcHomecareView: React.FC<NcHomecareViewProps> = ({
                   </span>
                 </div>
 
-                <div>
+                <div className="mt-4 flex-1 min-w-0">
                   <h4 className="font-bold text-slate-900 text-lg">{srv.name}</h4>
                   <p className="text-xs text-slate-500 mt-1">{srv.category_name || srv.category}</p>
                   {srv.description && (
-                    <p className="text-xs text-slate-600 line-clamp-2 mt-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <p className="text-xs text-slate-600 line-clamp-3 overflow-hidden mt-2 min-h-[3.75rem] bg-slate-50 p-2.5 rounded-xl border border-slate-100 leading-5">
                       {srv.description}
                     </p>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-auto">
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 mt-4">
                   <span className="text-base font-black text-blue-700">৳{srv.base_price}</span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => setSelectedCatalogService(srv)}

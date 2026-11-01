@@ -12,6 +12,7 @@ import {
   fetchAppointmentHistoryApi,
   fetchDoctorsListApi,
   createHqVideoRoomApi,
+  joinHqVideoRoomApi,
   ApiAppointment,
   ApiDoctor,
   AppointmentHistoryResponse
@@ -189,15 +190,15 @@ export const HqAppointmentView: React.FC = () => {
     setIsSubmittingAction(true);
     try {
       const generatedRoomId = `HQ-ROOM-${targetAptForRoom.id}`;
-      await createHqVideoRoomApi(targetAptForRoom.id, roomNotesInput || 'HQ Room Created by HQ Admin');
+      const createdRoom = await createHqVideoRoomApi(targetAptForRoom.id, roomNotesInput || 'HQ Room Created by HQ Admin');
       
       // Update appointment state locally
       const updatedRoomApt: ApiAppointment = {
         ...targetAptForRoom,
-        video_room_id: generatedRoomId,
-        video_room_status: 'ROOM_CREATED',
-        video_room_url: `https://meet.jit.si/Bellevie-HQ-Consultancy-${targetAptForRoom.id}`,
-        video_room_created_at: new Date().toISOString(),
+        video_room_id: createdRoom.video_room_id || generatedRoomId,
+        video_room_status: createdRoom.video_room_status || 'ROOM_CREATED',
+        video_room_url: createdRoom.video_room_url,
+        video_room_created_at: createdRoom.video_room_created_at || new Date().toISOString(),
         video_room_created_by: 'HQ Admin',
       };
 
@@ -211,26 +212,7 @@ export const HqAppointmentView: React.FC = () => {
       setRoomNotesInput('');
       alert(`HQ Video Consultation Room #${generatedRoomId} created successfully! Both Doctor and Member can now join.`);
     } catch (err: any) {
-      // Local fallback for smooth UI experience
-      const generatedRoomId = `HQ-ROOM-${targetAptForRoom.id}`;
-      const updatedRoomApt: ApiAppointment = {
-        ...targetAptForRoom,
-        video_room_id: generatedRoomId,
-        video_room_status: 'ROOM_CREATED',
-        video_room_url: `https://meet.jit.si/Bellevie-HQ-Consultancy-${targetAptForRoom.id}`,
-        video_room_created_at: new Date().toISOString(),
-        video_room_created_by: 'HQ Admin',
-      };
-
-      setAppointments(prev => prev.map(a => a.id === targetAptForRoom.id ? updatedRoomApt : a));
-      if (selectedAppointment && selectedAppointment.id === targetAptForRoom.id) {
-        setSelectedAppointment(updatedRoomApt);
-      }
-
-      setCreateRoomModalOpen(false);
-      setTargetAptForRoom(null);
-      setRoomNotesInput('');
-      alert(`HQ Video Consultation Room #${generatedRoomId} created successfully!`);
+      alert('Secure JaaS video room could not be created. No public fallback room was created.');
     } finally {
       setIsSubmittingAction(false);
     }
@@ -853,10 +835,14 @@ export const HqAppointmentView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              const roomId = selectedAppointment.video_room_id || `bellevie-room-${selectedAppointment.id}`;
-                              const slug = roomId.toLowerCase().replace(/[^a-z0-9-_]/g, '');
-                              const url = selectedAppointment.video_room_url || `https://meet.jit.si/${slug}`;
-                              window.open(url, '_blank', 'noopener,noreferrer');
+                               void (async () => {
+                                 try {
+                                   const access = await joinHqVideoRoomApi(selectedAppointment.id);
+                                   window.open(`${access.room_url}?jwt=${encodeURIComponent(access.token)}`, '_blank', 'noopener,noreferrer');
+                                 } catch (error) {
+                                   alert('Secure JaaS video is not configured or access was denied.');
+                                 }
+                               })();
                             }}
                             className="px-3 py-2 bg-slate-800 text-white font-bold rounded-xl text-xs hover:bg-slate-900 cursor-pointer flex items-center gap-1"
                           >
@@ -866,11 +852,15 @@ export const HqAppointmentView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              const roomId = selectedAppointment.video_room_id || `bellevie-room-${selectedAppointment.id}`;
-                              const slug = roomId.toLowerCase().replace(/[^a-z0-9-_]/g, '');
-                              const url = selectedAppointment.video_room_url || `https://meet.jit.si/${slug}`;
-                              navigator.clipboard.writeText(url);
-                              alert('Room Link copied to clipboard!');
+                               void (async () => {
+                                 try {
+                                   const access = await joinHqVideoRoomApi(selectedAppointment.id);
+                                   await navigator.clipboard.writeText(`${access.room_url}?jwt=${encodeURIComponent(access.token)}`);
+                                   alert('Secure room link copied. It expires in 1 hour.');
+                                 } catch (error) {
+                                   alert('Secure JaaS video is not configured or access was denied.');
+                                 }
+                               })();
                             }}
                             className="px-3 py-2 bg-white border border-indigo-200 text-indigo-800 font-bold rounded-xl text-xs hover:bg-indigo-50 cursor-pointer flex items-center gap-1"
                           >
@@ -1241,6 +1231,8 @@ export const HqAppointmentView: React.FC = () => {
               { id: 1, call: activeVideoCallApt.id, sender_name: 'HQ Controller', sender_role: 'ADMIN', message: 'Bellevie HQ Video Room initiated. Doctor & Patient connected.', timestamp: '10:00 AM' }
             ]
           }}
+          joinRoom={joinHqVideoRoomApi}
+          endCall={async () => Promise.resolve()}
           onClose={() => setActiveVideoCallApt(null)}
         />
       )}
